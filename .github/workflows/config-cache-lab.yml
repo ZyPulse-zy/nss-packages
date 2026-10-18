@@ -1,0 +1,51 @@
+name: NSS configuration cache regression
+on:
+  push:
+    paths: ['.ci/config-cache-v1.bundle.b64']
+permissions:
+  contents: write
+jobs:
+  sdk-cache:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Import exact signed-off candidate
+        run: |
+          base64 --decode .ci/config-cache-v1.bundle.b64 > /tmp/candidate.bundle
+          echo '36167368a0b54d4dca05ef2eba1c9237e0fcceac642f5946aa6e1e9f0e4d9955  /tmp/candidate.bundle' | sha256sum -c -
+          git fetch /tmp/candidate.bundle HEAD:refs/remotes/lab/candidate
+          test "$(git rev-parse refs/remotes/lab/candidate)" = '3dad4bd390e875608b6f8a7a9627bebe821d7db1'
+          git worktree add candidate refs/remotes/lab/candidate
+          git -C candidate diff --check 0d970dbf0185e3f53709bd803e8a466598023c57 HEAD
+      - name: Install SDK host requirements
+        run: sudo apt-get update -qq && sudo apt-get install -y build-essential gawk libncurses-dev zlib1g-dev file unzip zstd
+      - name: Download pinned official OpenWrt SDK
+        run: |
+          curl --fail --location --retry 3 https://downloads.openwrt.org/releases/25.12.0/targets/qualcommax/ipq60xx/openwrt-sdk-25.12.0-qualcommax-ipq60xx_gcc-14.3.0_musl.Linux-x86_64.tar.zst -o sdk.tar.zst
+          echo '068b9f70a19fa95383be5778cdea5aeeef4ede61022de9e596f14bd4f30a4225  sdk.tar.zst' | sha256sum -c -
+          mkdir sdk
+          tar --zstd -xf sdk.tar.zst --strip-components=1 -C sdk
+          make -C sdk defconfig
+      - name: Actual SDK stamp graph and original counterexample
+        run: |
+          python3 candidate/qca-nss-drv/tests/test-config-cache.py --sdk sdk --output fixed-evidence
+          git show 0d970dbf0185e3f53709bd803e8a466598023c57:qca-nss-drv/Makefile > /tmp/nss-original.mk
+          python3 candidate/qca-nss-drv/tests/test-config-cache.py --sdk sdk --recipe /tmp/nss-original.mk --expect-stale --output original-evidence
+          if python3 candidate/qca-nss-drv/tests/test-config-cache.py --sdk sdk --recipe /tmp/nss-original.mk --output negative-evidence > original-normal-test.log 2>&1; then
+            echo 'Original recipe unexpectedly passed'; exit 1
+          fi
+          grep -q '12_5-switch: stale or unnecessarily rebuilt artifact' original-normal-test.log
+      - name: Publish verified source branch
+        run: git push origin '3dad4bd390e875608b6f8a7a9627bebe821d7db1:refs/heads/fix/nss-firmware-config-cache'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: actual-sdk-cache-evidence
+          path: |
+            fixed-evidence/
+            original-evidence/
+            negative-evidence/
+            original-normal-test.log
