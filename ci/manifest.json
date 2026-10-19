@@ -1,0 +1,26 @@
+[
+  {
+    "repo": "qosmio/nss-packages",
+    "n": 79,
+    "source": "nss-cache-fix",
+    "slug": "nss-cache",
+    "message": "qca-nss-drv: rebuild when selecting NSS firmware 12.5\n\nSwitching to 12.5 changes the driver's exported statistics layout without\nchanging its source version. Add the selector to PKG_CONFIG_DEPENDS so\nthe configured stamp invalidates the old build. Bump the package release.\n\nSigned-off-by: Yuen Su <zypulsecore@gmail.com>\n",
+    "old": "3dad4bd390e875608b6f8a7a9627bebe821d7db1",
+    "base": "0d970dbf0185e3f53709bd803e8a466598023c57",
+    "branch": "fix/nss-firmware-config-cache",
+    "fork": "ZyPulse-zy/nss-packages",
+    "files": [
+      "qca-nss-drv/Makefile",
+      "qca-nss-drv/tests/README.md",
+      "qca-nss-drv/tests/config-cache-fixture.mk",
+      "qca-nss-drv/tests/config-cache-probe.c",
+      "qca-nss-drv/tests/test-config-cache.py"
+    ],
+    "upstream_base_now": "0d970dbf0185e3f53709bd803e8a466598023c57",
+    "candidate": "9c8defcdd5002362bfeed851a134df47bfc0cfaf",
+    "upstream_files": [
+      "qca-nss-drv/Makefile"
+    ],
+    "bundle_sha256": "cd5243e57eb08621061ef476c49730fb4973a0cdf2aab6e8ce978ddf9f7b9c23"
+  }
+]
